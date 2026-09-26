@@ -26,6 +26,6 @@ async function main() {
 process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
 
 main().catch((e) => {
-  console.error(e);
+  console.error(`[main] 시작 실패: ${e.message}`);
   process.exit(1);
 });
