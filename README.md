@@ -17,11 +17,21 @@ Node.js 18 이상 (LTS 권장)과, AI 분류용으로 **구독 계정(Pro/Max)�
 ### PC 재부팅 후에도 계속 돌리기 (pm2)
 
 ```bash
-npm i -g pm2
+npm i -g pm2       # macOS에서 EACCES 권한 오류가 나면 아래 "전역 설치 권한 오류" 참고
 pm2 start src/index.js --name trend-bot
 pm2 save
 pm2 startup        # 출력되는 명령을 그대로 실행 (Windows는 pm2-windows-startup 사용)
 pm2 logs trend-bot # 로그 확인
+```
+
+**전역 설치 권한 오류 (macOS `EACCES ... /usr/local/lib/node_modules`)**: nodejs.org 설치 파일로 Node를 설치하면 전역 폴더가 관리자 소유라서 생기는 오류입니다. `sudo` 없이 사용자 폴더에 설치되도록 한 번만 설정하세요.
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+npm i -g pm2
 ```
 
 ## 환경변수
