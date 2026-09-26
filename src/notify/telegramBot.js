@@ -30,7 +30,8 @@ function formatMessage(g) {
   const arts = (g.articles || []).slice(0, config.naver.articlesPerKeyword);
   if (arts.length) {
     lines.push('', '관련기사:');
-    for (const a of arts) lines.push(`• <a href="${escapeHtml(a.url)}">${escapeHtml(a.title)}</a>`);
+    // 제목은 클릭 가능한 링크, 옆 괄호에 주소를 텍스트로 함께 표기
+    for (const a of arts) lines.push(`• <a href="${escapeHtml(a.url)}">${escapeHtml(a.title)}</a> (${escapeHtml(a.url)})`);
   }
   return lines.join('\n');
 }

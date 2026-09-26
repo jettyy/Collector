@@ -109,7 +109,7 @@
               k.articles.length
                 ? `<ul class="kw-articles">${k.articles
                     .slice(0, 3)
-                    .map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a></li>`)
+                    .map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a> <span class="kw-url">(${esc(a.url)})</span></li>`)
                     .join('')}</ul>`
                 : ''
             }

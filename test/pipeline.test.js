@@ -134,7 +134,7 @@ test('telegram: 메시지 포맷과 버튼', () => {
   });
   assert.match(text, /신규 트렌드: 환율 &lt;급등&gt;/);
   assert.match(text, /출처: 구글트렌드, 네이버뉴스 \(교차 2건\)/);
-  assert.match(text, /<a href="https:\/\/x\/\?a=1&amp;b=2">A&amp;B<\/a>/);
+  assert.match(text, /<a href="https:\/\/x\/\?a=1&amp;b=2">A&amp;B<\/a> \(https:\/\/x\/\?a=1&amp;b=2\)/);
   const kb = telegram.buildKeyboard(7);
   assert.equal(kb.inline_keyboard.at(-1)[0].callback_data, 'ign:7');
 });
