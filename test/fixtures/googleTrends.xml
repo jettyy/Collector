@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ht="https://trends.google.com/trending/rss" version="2.0">
+<channel>
+<title>Daily Search Trends</title>
+<item>
+  <title>청년도약계좌</title>
+  <ht:approx_traffic>20,000+</ht:approx_traffic>
+  <pubDate>Sat, 26 Sep 2026 04:00:00 +0900</pubDate>
+  <ht:news_item>
+    <ht:news_item_title>청년도약계좌 10월 신청 시작&amp;#39;… 소득 기준 완화</ht:news_item_title>
+    <ht:news_item_url>https://example.com/news/1</ht:news_item_url>
+    <ht:news_item_source>경제신문</ht:news_item_source>
+  </ht:news_item>
+  <ht:news_item>
+    <ht:news_item_title>&lt;b&gt;청년도약계좌&lt;/b&gt; 정부 기여금 확대</ht:news_item_title>
+    <ht:news_item_url>https://example.com/news/2</ht:news_item_url>
+    <ht:news_item_source>뉴스A</ht:news_item_source>
+  </ht:news_item>
+</item>
+<item>
+  <title>환율</title>
+  <ht:approx_traffic>5000+</ht:approx_traffic>
+  <ht:news_item>
+    <ht:news_item_title>원달러 환율 1,400원 돌파</ht:news_item_title>
+    <ht:news_item_url>https://example.com/news/3</ht:news_item_url>
+    <ht:news_item_source>뉴스B</ht:news_item_source>
+  </ht:news_item>
+</item>
+<item>
+  <title>아이돌A 열애</title>
+  <ht:approx_traffic>50,000+</ht:approx_traffic>
+</item>
+</channel>
+</rss>

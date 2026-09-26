@@ -1,0 +1,27 @@
+{
+  "name": "trend-alert-bot",
+  "version": "0.1.0",
+  "description": "10분 주기 실시간 트렌드 키워드 수집 → 정보성 필터링 → 텔레그램 알림 + 대시보드",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "once": "node src/cli.js run --dry",
+    "collect": "node src/cli.js collect",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "axios": "^1.20.0",
+    "better-sqlite3": "^13.0.3",
+    "cheerio": "^1.2.0",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "node-cron": "^4.6.0",
+    "node-telegram-bot-api": "^2.1.0"
+  }
+}
