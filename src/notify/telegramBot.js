@@ -139,9 +139,13 @@ async function handleCallback(ctx) {
 
 // statusProvider: () => 문자열 (최근 실행 요약). /status 명령에 사용
 function start({ statusProvider } = {}) {
-  if (!enabled()) {
-    warn('telegram', 'TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID 가 없어 알림을 끕니다 (대시보드/수집은 계속 동작)');
+  if (!config.telegram.token) {
+    warn('telegram', 'TELEGRAM_BOT_TOKEN 이 없어 알림을 끕니다 (대시보드/수집은 계속 동작)');
     return null;
+  }
+  // chat id 가 없어도 봇은 띄운다: 알림 받을 방에서 /chatid 를 보내 번호를 확인하게 하기 위함
+  if (!config.telegram.chatId) {
+    warn('telegram', 'TELEGRAM_CHAT_ID 가 없어 알림은 꺼져 있습니다. 알림 받을 방에서 봇에게 /chatid 를 보내 번호를 확인하세요');
   }
   bot = new Bot(config.telegram.token, config.telegram.apiRoot ? { apiRoot: config.telegram.apiRoot } : undefined);
   bot.on('callback_query', handleCallback);
