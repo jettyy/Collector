@@ -100,15 +100,15 @@ claude auth status
 - 봇은 호출할 때 환경변수의 `ANTHROPIC_API_KEY`를 **일부러 빼고** 실행합니다. 그래서 `.env`나 시스템에 API 키가 남아 있어도 API로 과금되지 않습니다.
 - 도구 사용은 끈 상태(`--tools ""`)로, 분류 전용 시스템 프롬프트와 JSON 스키마만 넘겨 호출합니다. 세션 기록은 남기지 않습니다.
 - pm2로 띄울 때는 `claude auth login`을 한 **같은 OS 사용자 계정**으로 실행해야 로그인 정보를 읽습니다.
-- `claude`가 PATH에 없으면 `CLAUDE_CLI_PATH`에 전체 경로를 지정하세요 (예: Windows `C:\Users\me\AppData\Roaming\npm\claude.cmd`).
+- `claude`가 PATH에 없으면 `AI_CLI_PATH`에 전체 경로를 지정하세요 (예: Windows `C:\Users\me\AppData\Roaming\npm\claude.cmd`).
 
 **사용량**
 - 10분 주기당 1회 배치 호출 (항목이 80개를 넘으면 나눠서 호출). 1회 호출은 보통 5~15초 걸립니다.
 - 한 번 판정한 키워드와 헤드라인은 `LABEL_CACHE_HOURS`(기본 12시간) 동안 캐시에서 재사용합니다. 그래서 두 번째 주기부터는 새로 등장한 항목만 보냅니다.
-- 구독 사용량은 평소 Claude/Claude Code 사용과 **같은 한도를 공유**합니다. 아끼려면 `CLAUDE_MODEL=sonnet`(또는 `haiku`)을 쓰세요. 비워 두면 Claude Code 기본 모델을 씁니다.
+- 구독 사용량은 평소 Claude/Claude Code 사용과 **같은 한도를 공유**합니다. 기본 모델은 `sonnet`이고, 더 아끼려면 `AI_MODEL=haiku`, 정확도를 높이려면 `opus`로 바꾸세요.
 - 한도에 걸리거나 로그인이 만료되면 해당 주기는 휴리스틱으로 대체됩니다. 대시보드의 "AI 분류(구독)" 배지가 취소선으로 바뀌고, 마우스를 올리면 사유가 보입니다.
 
-**API 키로 쓰고 싶다면**: `AI_PROVIDER=api`, `ANTHROPIC_API_KEY=...`로 설정합니다 (기본 모델 `claude-opus-5`, 종량 과금). `AI_PROVIDER=off`로 두면 AI 없이 휴리스틱만 씁니다.
+**API 키로 쓰고 싶다면**: `AI_PROVIDER=api`, `ANTHROPIC_API_KEY=...`로 설정합니다 (기본 모델 `claude-sonnet-5`, 종량 과금). `AI_PROVIDER=off`로 두면 AI 없이 휴리스틱만 씁니다.
 
 ## 텔레그램 알림
 

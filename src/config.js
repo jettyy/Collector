@@ -73,14 +73,14 @@ const config = {
     maxItemsPerCall: num('AI_MAX_ITEMS_PER_CALL', 80),
     labelCacheHours: num('LABEL_CACHE_HOURS', 12),
     cli: {
-      path: str('CLAUDE_CLI_PATH', 'claude'),
-      model: str('CLAUDE_MODEL'), // 비우면 Claude Code 기본 모델 (예: opus, sonnet, haiku)
-      effort: str('CLAUDE_EFFORT', 'low'),
-      timeoutMs: num('CLAUDE_CLI_TIMEOUT_MS', 180000),
+      path: str('AI_CLI_PATH', 'claude'),
+      model: str('AI_MODEL', 'sonnet'), // opus / sonnet / haiku 또는 전체 모델명
+      effort: str('AI_EFFORT', 'low'),
+      timeoutMs: num('AI_CLI_TIMEOUT_MS', 180000),
     },
     api: {
       key: str('ANTHROPIC_API_KEY'),
-      model: str('ANTHROPIC_MODEL', 'claude-opus-5'),
+      model: str('ANTHROPIC_MODEL', 'claude-sonnet-5'),
       effort: str('ANTHROPIC_EFFORT', 'low'),
     },
   },
