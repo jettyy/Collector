@@ -235,3 +235,60 @@ test('config: BLOG_BOT_CHATS 파싱', () => {
     { name: '블로그봇2', chatId: '-100456' },
   ]);
 });
+
+test('aiClassifier: 구독 CLI(claude -p) 호출 → 라벨 매핑, API 키 제거, 실패 시 휴리스틱', { skip: process.platform === 'win32' }, async () => {
+  const path = require('path');
+  const os = require('os');
+  const fs = require('fs');
+  const config = require('../src/config');
+  const claude = require('../src/filters/claudeClient');
+  const logFile = path.join(os.tmpdir(), `fake-claude-${process.pid}.json`);
+  const saved = { provider: config.ai.provider, cli: { ...config.ai.cli }, env: { ...process.env } };
+  Object.assign(config.ai, { provider: 'cli' });
+  Object.assign(config.ai.cli, { path: path.join(__dirname, 'fixtures', 'fake-claude.js'), model: 'sonnet', effort: 'low' });
+  process.env.FAKE_CLAUDE_LOG = logFile;
+  process.env.ANTHROPIC_API_KEY = 'sk-should-not-leak';
+  try {
+    db.init(':memory:');
+    const groups = scorer.groupItems([kw('아이돌A 열애', 'googleTrends'), kw('전기요금 인상', 'signalbz'), headline('독감 백신 무료접종 시작', '사회', 'u1')]);
+    categoryFilter.apply(groups);
+    await aiClassifier.classify(groups);
+    const byKw = Object.fromEntries(groups.map((g) => [g.keyword, g]));
+    assert.equal(byKw['아이돌A 열애'].label, '제외');
+    assert.equal(byKw['전기요금 인상'].label, '정보성');
+    assert.equal(byKw['전기요금 인상'].reason, 'ai');
+    assert.equal(groups.find((g) => g.isHeadline).topic, '독감 백신');
+    assert.equal(db.getLabelCache('k:전기요금인상', 1).label, '정보성');
+
+    const call = JSON.parse(fs.readFileSync(logFile, 'utf8'));
+    assert.equal(call.hasApiKey, false, 'CLI 에는 API 키를 넘기지 않아야 구독으로 처리됨');
+    for (const flag of ['-p', '--json-schema', '--system-prompt-file', '--no-session-persistence']) assert.ok(call.argv.includes(flag), flag);
+    assert.deepEqual(call.argv.slice(call.argv.indexOf('--tools'), call.argv.indexOf('--tools') + 2), ['--tools', '']);
+    assert.deepEqual(call.argv.slice(-4), ['--model', 'sonnet', '--effort', 'low']);
+    assert.equal(claude.getStatus().ok, true);
+
+    // 사용량 한도 등 오류 → 휴리스틱 대체 + 상태 기록
+    process.env.FAKE_CLAUDE_MODE = 'error';
+    db.init(':memory:');
+    const g2 = scorer.groupItems([kw('전기요금 인상', 'signalbz')]);
+    categoryFilter.apply(g2);
+    const r = await aiClassifier.classify(g2);
+    assert.equal(g2[0].reason, 'heuristic');
+    assert.match(r.errors[0].message, /usage limit/);
+    assert.equal(claude.getStatus().ok, false);
+  } finally {
+    config.ai.provider = saved.provider;
+    Object.assign(config.ai.cli, saved.cli);
+    for (const k of ['FAKE_CLAUDE_LOG', 'FAKE_CLAUDE_MODE', 'ANTHROPIC_API_KEY']) {
+      if (k in saved.env) process.env[k] = saved.env[k];
+      else delete process.env[k];
+    }
+    fs.rmSync(logFile, { force: true });
+  }
+});
+
+test('claudeClient: Windows 셸 인자 따옴표 처리', () => {
+  const { winQuote } = require('../src/filters/claudeClient');
+  assert.equal(winQuote(''), '""');
+  assert.equal(winQuote('{"a":1}'), '"{\\"a\\":1}"');
+});

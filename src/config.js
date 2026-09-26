@@ -67,12 +67,22 @@ const config = {
     excludeWorld: bool('EXCLUDE_WORLD', false),
   },
 
-  anthropic: {
-    apiKey: str('ANTHROPIC_API_KEY'),
-    model: str('ANTHROPIC_MODEL', 'claude-opus-5'),
-    effort: str('ANTHROPIC_EFFORT', 'low'),
+  ai: {
+    // cli: Claude Code CLI(claude -p)로 구독 계정(Pro/Max) 사용 · api: ANTHROPIC_API_KEY 과금 · off: 휴리스틱만
+    provider: str('AI_PROVIDER', 'cli').toLowerCase(),
     maxItemsPerCall: num('AI_MAX_ITEMS_PER_CALL', 80),
     labelCacheHours: num('LABEL_CACHE_HOURS', 12),
+    cli: {
+      path: str('CLAUDE_CLI_PATH', 'claude'),
+      model: str('CLAUDE_MODEL'), // 비우면 Claude Code 기본 모델 (예: opus, sonnet, haiku)
+      effort: str('CLAUDE_EFFORT', 'low'),
+      timeoutMs: num('CLAUDE_CLI_TIMEOUT_MS', 180000),
+    },
+    api: {
+      key: str('ANTHROPIC_API_KEY'),
+      model: str('ANTHROPIC_MODEL', 'claude-opus-5'),
+      effort: str('ANTHROPIC_EFFORT', 'low'),
+    },
   },
 
   scoring: {

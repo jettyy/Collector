@@ -53,13 +53,16 @@
   // ---------- 렌더링 ----------
   function renderFlags() {
     const m = state.meta;
+    const ai = m.ai || {};
+    const aiName = ai.provider === 'api' ? 'AI 분류(API)' : ai.provider === 'cli' ? 'AI 분류(구독)' : 'AI 분류';
+    const aiTitle = !ai.enabled ? '꺼짐 - 휴리스틱 분류 중' : ai.ok === false ? `최근 호출 실패: ${ai.message}` : ai.ok ? '정상' : '아직 호출 전';
     const flags = [
-      ['텔레그램', m.telegram],
-      ['AI 분류', m.ai],
-      ['네이버 검색', m.naverSearch],
+      ['텔레그램', m.telegram, m.telegram ? '설정됨' : '.env 설정 필요'],
+      [aiName, ai.enabled && ai.ok !== false, aiTitle],
+      ['네이버 검색', m.naverSearch, m.naverSearch ? '설정됨' : '.env 설정 필요'],
     ];
     $('#flags').innerHTML = flags
-      .map(([name, on]) => `<span class="flag ${on ? '' : 'off'}" title="${on ? '설정됨' : '.env 설정 필요'}">${name}</span>`)
+      .map(([name, on, title]) => `<span class="flag ${on ? '' : 'off'}" title="${esc(title)}">${esc(name)}</span>`)
       .join('');
   }
 
@@ -206,7 +209,14 @@
 
   async function refresh() {
     try {
-      const [hourly, runs] = await Promise.all([api(`/api/stats/hourly?hours=${state.hours}`), api('/api/runs?limit=30'), loadKeywords()]);
+      const [hourly, runs, meta] = await Promise.all([
+        api(`/api/stats/hourly?hours=${state.hours}`),
+        api('/api/runs?limit=30'),
+        api('/api/meta'),
+        loadKeywords(),
+      ]);
+      state.meta = meta;
+      renderFlags();
       renderTiles(hourly, runs);
       renderChart(hourly);
       renderRuns(runs);

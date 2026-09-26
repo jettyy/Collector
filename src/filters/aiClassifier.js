@@ -1,17 +1,17 @@
-// 2차 필터: Claude API 배치 판정
+// 2차 필터: Claude 배치 판정 (기본: 구독 계정의 Claude Code CLI, AI_PROVIDER 로 변경)
 //  - 카테고리 메타데이터로 결론이 안 난 그룹(review)에 "정보성 / 제외" 라벨을 붙인다
 //  - 네이버 기사 제목만 있는 헤드라인 그룹에는 짧은 주제어(topic)도 뽑는다
 //  - 주기당 1회 배치 호출 (항목이 많으면 AI_MAX_ITEMS_PER_CALL 단위로 분할)
 //  - 같은 키워드/헤드라인은 LABEL_CACHE_HOURS 동안 캐시 재사용 → 반복 비용 없음
-//  - API 키가 없거나 호출이 실패하면 규칙 기반 휴리스틱으로 대체 (캐시하지 않음)
-const Anthropic = require('@anthropic-ai/sdk');
+//  - Claude 를 쓸 수 없거나 호출이 실패하면 규칙 기반 휴리스틱으로 대체 (캐시하지 않음)
 const config = require('../config');
+const claude = require('./claudeClient');
 const db = require('../db/db');
 const { titlesOf } = require('../scoring/scorer');
 const { log, warn, cleanHeadline } = require('../utils');
 
 const SYSTEM_PROMPT = `너는 한국 실시간 트렌드 키워드를 블로그 소재 관점에서 분류하는 편집자다.
-각 항목이 "정보성"인지 "제외"인지 판정한다.
+각 항목이 정보성(label "info")인지 제외(label "exclude")인지 판정한다.
 - 정보성: 생활정보, 경제 데이터(금리·환율·물가·부동산·주가 지표 등), IT·과학·신제품, 제도·정책 변경(시행일·신청방법·지원금 등), 날씨·재난 대비, 건강, 소비자 정보처럼 사람들이 검색해서 "알아야 할" 내용.
 - 제외: 연예인 가십·열애·결혼·이혼, 스포츠 경기 결과, 정치인·정당 공방, 수사·재판·소송·고소 논란, 사건사고 자극 보도, 밈·단발성 화제처럼 휘발성이 강한 내용.
 애매하면 "이 주제로 정보성 블로그 글을 쓸 수 있는가"로 판단한다.
@@ -31,7 +31,7 @@ const OUTPUT_SCHEMA = {
         properties: {
           id: { type: 'integer' },
           topic: { type: 'string' },
-          label: { type: 'string', enum: ['정보성', '제외'] },
+          label: { type: 'string', enum: ['info', 'exclude'] },
         },
         required: ['id', 'topic', 'label'],
         additionalProperties: false,
@@ -92,37 +92,11 @@ function buildUserContent(batch) {
   return `다음은 방금 수집된 실시간 키워드와 관련 기사 제목 목록이다. 각 항목을 판정하라.\n\n${JSON.stringify(lines, null, 1)}`;
 }
 
-let client = null;
-function getClient() {
-  if (!client) client = new Anthropic({ apiKey: config.anthropic.apiKey, timeout: 120000, maxRetries: 2 });
-  return client;
-}
+const LABELS = { info: '정보성', exclude: '제외' };
 
 async function callClaude(batch) {
-  const { model, effort } = config.anthropic;
-  const response = await getClient().beta.messages.create({
-    model,
-    max_tokens: 16000,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildUserContent(batch) }],
-    output_config: {
-      // Haiku 는 effort 파라미터를 지원하지 않음
-      ...(effort && effort !== 'none' && !/haiku/.test(model) ? { effort } : {}),
-      format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
-    },
-    // 안전 분류기 거절 시 서버에서 권장 모델로 자동 재시도
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-  });
-
-  if (response.stop_reason === 'refusal') throw new Error('Claude 가 판정을 거절함 (refusal)');
-  if (response.stop_reason === 'max_tokens') throw new Error('응답이 max_tokens 에서 잘림');
-  const text = response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
-  const parsed = JSON.parse(text);
-  return parsed.results || [];
+  const out = await claude.complete({ system: SYSTEM_PROMPT, user: buildUserContent(batch), schema: OUTPUT_SCHEMA });
+  return (out.results || []).map((r) => ({ ...r, label: LABELS[r.label] || r.label }));
 }
 
 async function classify(groups) {
@@ -132,7 +106,7 @@ async function classify(groups) {
 
   for (const g of groups) {
     if (!needsWork(g)) continue;
-    const hit = db.getLabelCache(cacheKey(g), config.anthropic.labelCacheHours);
+    const hit = db.getLabelCache(cacheKey(g), config.ai.labelCacheHours);
     if (hit) {
       applyResult(g, hit, hit.reason || 'ai');
       cached++;
@@ -141,16 +115,16 @@ async function classify(groups) {
     }
   }
 
-  const useAi = !!config.anthropic.apiKey;
+  const useAi = claude.enabled();
   let aiCount = 0;
   if (pending.length && useAi) {
-    for (let i = 0; i < pending.length; i += config.anthropic.maxItemsPerCall) {
-      const batch = pending.slice(i, i + config.anthropic.maxItemsPerCall);
+    for (let i = 0; i < pending.length; i += config.ai.maxItemsPerCall) {
+      const batch = pending.slice(i, i + config.ai.maxItemsPerCall);
       try {
         const results = await callClaude(batch);
         for (const r of results) {
           const item = batch[r.id];
-          if (!item || item.done) continue;
+          if (!item || item.done || !['정보성', '제외'].includes(r.label)) continue;
           const topic = item.g.isHeadline ? r.topic : item.g.keyword;
           applyResult(item.g, { label: r.label, topic }, 'ai');
           db.setLabelCache(cacheKey(item.g), { label: r.label, topic, reason: 'ai' });
@@ -158,7 +132,7 @@ async function classify(groups) {
           aiCount++;
         }
       } catch (e) {
-        const msg = e instanceof Anthropic.APIError ? `API ${e.status}: ${e.message}` : e.message;
+        const msg = e.message;
         warn('ai', `배치 판정 실패 → 휴리스틱 대체: ${msg}`);
         errors.push({ stage: 'aiClassifier', message: msg });
       }
@@ -175,7 +149,7 @@ async function classify(groups) {
     heuristic++;
   }
 
-  log('ai', `판정: 캐시 ${cached} / AI ${aiCount} / 휴리스틱 ${heuristic}${useAi ? '' : ' (ANTHROPIC_API_KEY 없음)'}`);
+  log('ai', `판정: 캐시 ${cached} / AI ${aiCount} / 휴리스틱 ${heuristic}${useAi ? '' : ` (AI 꺼짐: AI_PROVIDER=${config.ai.provider})`}`);
   return { errors };
 }
 

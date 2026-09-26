@@ -1,6 +1,7 @@
 // 테스트는 외부 API 를 절대 호출하지 않도록 키를 비운 상태로 설정을 로드한다.
 // (dotenv 는 이미 정의된 환경변수를 덮어쓰지 않으므로 로컬 .env 가 있어도 안전)
 Object.assign(process.env, {
+  AI_PROVIDER: 'off',
   ANTHROPIC_API_KEY: '',
   TELEGRAM_BOT_TOKEN: '',
   TELEGRAM_CHAT_ID: '',

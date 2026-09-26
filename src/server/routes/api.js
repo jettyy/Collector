@@ -4,6 +4,7 @@ const db = require('../../db/db');
 const scheduler = require('../../scheduler');
 const { SOURCE_LABELS } = require('../../scoring/scorer');
 const config = require('../../config');
+const claude = require('../../filters/claudeClient');
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.get('/meta', (req, res) => {
     cron: config.cronSchedule,
     running: scheduler.isRunning(),
     telegram: !!(config.telegram.token && config.telegram.chatId),
-    ai: !!config.anthropic.apiKey,
+    ai: { provider: config.ai.provider, enabled: claude.enabled(), ...claude.getStatus() },
     naverSearch: !!(config.naver.clientId && config.naver.clientSecret),
   });
 });

@@ -12,7 +12,7 @@ cp .env.example .env   # 값 채우기
 npm start
 ```
 
-Node.js 18 이상 (LTS 권장)이 필요합니다. `better-sqlite3`는 Windows/macOS/Linux용 빌드가 미리 포함되어 있어 별도 컴파일 없이 설치됩니다.
+Node.js 18 이상 (LTS 권장)과, AI 분류용으로 **구독 계정(Pro/Max)에 로그인된 Claude Code**가 필요합니다 (아래 "Claude 구독 계정 연결" 참고). `better-sqlite3`는 Windows/macOS/Linux용 빌드가 미리 포함되어 있어 별도 컴파일 없이 설치됩니다.
 
 ### PC 재부팅 후에도 계속 돌리기 (pm2)
 
@@ -31,14 +31,13 @@ pm2 logs trend-bot # 로그 확인
 | `TELEGRAM_BOT_TOKEN` | @BotFather에서 발급받은 봇 토큰 |
 | `TELEGRAM_CHAT_ID` | 알림을 받을 방의 chat id. 봇을 방에 초대한 뒤 `/chatid`를 보내면 알려줍니다 |
 | `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | [네이버 개발자센터](https://developers.naver.com/apps)에서 "검색" API를 사용하는 애플리케이션을 등록 |
-| `ANTHROPIC_API_KEY` | Claude API 키 (2차 AI 분류용) |
 | `PORT` | 대시보드 포트 (기본 3000) |
 | `BLOG_BOT_CHATS` | 선택. `이름:chat_id` 쉼표 목록. 알림의 "블로그봇에 전달" 버튼이 이 방들로 `주제: OOO`를 보냅니다 |
 
 나머지 옵션(수집 주기, 점수 기준, 재알림 간격, 정치 제외 여부 등)은 `.env.example`에 기본값과 함께 정리되어 있습니다. 키가 비어 있어도 프로그램은 동작합니다:
 
 - 텔레그램 키가 없으면 알림 없이 수집과 대시보드만 동작합니다.
-- Claude 키가 없으면 규칙 기반 휴리스틱으로 분류합니다 (정확도는 떨어집니다).
+- Claude Code가 없거나 로그인이 풀려 있으면 규칙 기반 휴리스틱으로 분류합니다 (정확도는 떨어집니다).
 - 네이버 검색 키가 없으면 관련 기사 매칭을 건너뜁니다.
 
 대시보드 오른쪽 위 배지에서 각 설정 상태를 확인할 수 있습니다.
@@ -82,12 +81,34 @@ node-cron (*/10 * * * *)
 - **첫 실행**: 처음 설치했을 때 이미 떠 있는 키워드가 한꺼번에 알림으로 오지 않도록, 첫 주기에는 기준선만 저장합니다 (`NOTIFY_ON_FIRST_RUN=true`로 끌 수 있음).
 - 한 주기 최대 `MAX_ALERTS_PER_RUN`(기본 5)건까지만 보내며, 점수가 높은 순서로 고릅니다.
 
-### AI 분류 비용
+### Claude 구독 계정 연결 (API 키 불필요)
 
-- 10분 주기당 1회 배치 호출 (항목이 80개를 넘으면 나눠서 호출).
-- 한 번 판정한 키워드와 헤드라인은 `LABEL_CACHE_HOURS`(기본 12시간) 동안 캐시에서 재사용합니다. 그래서 두 번째 주기부터는 새로 등장한 항목만 API로 보냅니다.
-- 모델은 `ANTHROPIC_MODEL`(기본 `claude-opus-5`)이고, 분류 작업이라 `ANTHROPIC_EFFORT=low`로 호출합니다. 비용을 더 줄이려면 `ANTHROPIC_MODEL=claude-haiku-4-5` 등으로 바꿀 수 있습니다. Haiku는 effort 옵션을 지원하지 않으므로 이 경우 자동으로 빼고 호출합니다.
-- 안전 분류기가 요청을 거절하면 서버 측 fallback(`fallbacks: "default"`)으로 자동 재시도합니다. 그래도 실패하면 휴리스틱으로 대체합니다.
+AI 분류는 이 PC에 설치된 **Claude Code CLI를 `claude -p`(비대화형 모드)로 호출**합니다. 그래서 API 요금이 아니라 로그인한 **구독 계정(Pro/Max)의 사용량**으로 처리됩니다.
+
+```bash
+# 1) Claude Code 설치 (택1)
+npm install -g @anthropic-ai/claude-code
+#    또는 공식 설치 스크립트: https://docs.claude.com/ko/docs/claude-code/setup
+
+# 2) 구독 계정으로 로그인 (브라우저 창이 열림)
+claude auth login
+
+# 3) 확인: "loggedIn": true, "authMethod"가 구독 로그인(oauth)이어야 함
+claude auth status
+```
+
+- 봇은 호출할 때 환경변수의 `ANTHROPIC_API_KEY`를 **일부러 빼고** 실행합니다. 그래서 `.env`나 시스템에 API 키가 남아 있어도 API로 과금되지 않습니다.
+- 도구 사용은 끈 상태(`--tools ""`)로, 분류 전용 시스템 프롬프트와 JSON 스키마만 넘겨 호출합니다. 세션 기록은 남기지 않습니다.
+- pm2로 띄울 때는 `claude auth login`을 한 **같은 OS 사용자 계정**으로 실행해야 로그인 정보를 읽습니다.
+- `claude`가 PATH에 없으면 `CLAUDE_CLI_PATH`에 전체 경로를 지정하세요 (예: Windows `C:\Users\me\AppData\Roaming\npm\claude.cmd`).
+
+**사용량**
+- 10분 주기당 1회 배치 호출 (항목이 80개를 넘으면 나눠서 호출). 1회 호출은 보통 5~15초 걸립니다.
+- 한 번 판정한 키워드와 헤드라인은 `LABEL_CACHE_HOURS`(기본 12시간) 동안 캐시에서 재사용합니다. 그래서 두 번째 주기부터는 새로 등장한 항목만 보냅니다.
+- 구독 사용량은 평소 Claude/Claude Code 사용과 **같은 한도를 공유**합니다. 아끼려면 `CLAUDE_MODEL=sonnet`(또는 `haiku`)을 쓰세요. 비워 두면 Claude Code 기본 모델을 씁니다.
+- 한도에 걸리거나 로그인이 만료되면 해당 주기는 휴리스틱으로 대체됩니다. 대시보드의 "AI 분류(구독)" 배지가 취소선으로 바뀌고, 마우스를 올리면 사유가 보입니다.
+
+**API 키로 쓰고 싶다면**: `AI_PROVIDER=api`, `ANTHROPIC_API_KEY=...`로 설정합니다 (기본 모델 `claude-opus-5`, 종량 과금). `AI_PROVIDER=off`로 두면 AI 없이 휴리스틱만 씁니다.
 
 ## 텔레그램 알림
 
@@ -144,7 +165,7 @@ node-cron (*/10 * * * *)
 ```
 src/
 ├── collectors/        수집기 (공통 인터페이스: async collect() → [{ keyword, source, rank, rawMeta }])
-├── filters/           categoryFilter(1차), aiClassifier(2차)
+├── filters/           categoryFilter(1차), aiClassifier(2차), claudeClient(구독 CLI / API 호출)
 ├── enrich/            articleMatcher (네이버 뉴스 검색 API)
 ├── scoring/           scorer (그룹핑, 교차 가중치, 신규/지속 diff)
 ├── notify/            telegramBot
